@@ -47,9 +47,8 @@
  *  2 = config.ini - File format for PlatformIO preprocessing.
  *  3 = schema.json - The entire configuration schema. (13 = pattern groups)
  *  4 = schema.yml - The entire configuration schema.
- *  5 = Config.h - Minimal configuration by popular demand.
  */
-//#define CONFIG_EXPORT 105 // :[1:'JSON', 2:'config.ini', 3:'schema.json', 4:'schema.yml', 5:'Config.h']
+//#define CONFIG_EXPORT 2 // :[1:'JSON', 2:'config.ini', 3:'schema.json', 4:'schema.yml']
 
 //===========================================================================
 //============================= Thermal Settings ============================
@@ -304,7 +303,7 @@
  * If you get false positives for "Thermal Runaway", increase
  * THERMAL_PROTECTION_HYSTERESIS and/or THERMAL_PROTECTION_PERIOD
  */
-#if ALL(HAS_HOTEND, THERMAL_PROTECTION_HOTENDS)
+#if ENABLED(THERMAL_PROTECTION_HOTENDS)
   #define THERMAL_PROTECTION_PERIOD 40        // (seconds)
   #define THERMAL_PROTECTION_HYSTERESIS 4     // (°C)
 
@@ -335,7 +334,7 @@
 /**
  * Thermal Protection parameters for the bed are just as above for hotends.
  */
-#if TEMP_SENSOR_BED && ENABLED(THERMAL_PROTECTION_BED)
+#if ENABLED(THERMAL_PROTECTION_BED)
   #define THERMAL_PROTECTION_BED_PERIOD        20 // (seconds)
   #define THERMAL_PROTECTION_BED_HYSTERESIS     2 // (°C)
 
@@ -349,7 +348,7 @@
 /**
  * Thermal Protection parameters for the heated chamber.
  */
-#if TEMP_SENSOR_CHAMBER && ENABLED(THERMAL_PROTECTION_CHAMBER)
+#if ENABLED(THERMAL_PROTECTION_CHAMBER)
   #define THERMAL_PROTECTION_CHAMBER_PERIOD    20 // (seconds)
   #define THERMAL_PROTECTION_CHAMBER_HYSTERESIS 2 // (°C)
 
@@ -363,7 +362,7 @@
 /**
  * Thermal Protection parameters for the laser cooler.
  */
-#if TEMP_SENSOR_COOLER && ENABLED(THERMAL_PROTECTION_COOLER)
+#if ENABLED(THERMAL_PROTECTION_COOLER)
   #define THERMAL_PROTECTION_COOLER_PERIOD     10 // (seconds)
   #define THERMAL_PROTECTION_COOLER_HYSTERESIS  3 // (°C)
 
@@ -605,8 +604,6 @@
  */
 //#define FAN_KICKSTART_TIME  100  // (ms)
 //#define FAN_KICKSTART_POWER 180  // 64-255
-//#define FAN_KICKSTART_LINEAR     // Set kickstart time linearly based on the speed, e.g., for 20% (51) it will be FAN_KICKSTART_TIME * 0.2.
-                                   // Useful for quick speed up to low speed. Kickstart power must be set to 255.
 
 // Some coolers may require a non-zero "off" state.
 //#define FAN_OFF_PWM  1
@@ -1119,18 +1116,15 @@
 /**
  * Fixed-time-based Motion Control -- EXPERIMENTAL
  * Enable/disable and set parameters with G-code M493.
- * See ft_types.h for named values used by FTM options.
  */
 //#define FT_MOTION
 #if ENABLED(FT_MOTION)
-  //#define FTM_IS_DEFAULT_MOTION                 // Use FT Motion as the factory default?
-  #define FTM_DEFAULT_DYNFREQ_MODE dynFreqMode_DISABLED // Default mode of dynamic frequency calculation. (DISABLED, Z_BASED, MASS_BASED)
-  #define FTM_DEFAULT_SHAPER_X      ftMotionShaper_NONE // Default shaper mode on X axis (NONE, ZV, ZVD, ZVDD, ZVDDD, EI, 2HEI, 3HEI, MZV)
-  #define FTM_DEFAULT_SHAPER_Y      ftMotionShaper_NONE // Default shaper mode on Y axis
+  #define FTM_DEFAULT_MODE        ftMotionMode_DISABLED // Default mode of fixed time control. (Enums in ft_types.h)
+  #define FTM_DEFAULT_DYNFREQ_MODE dynFreqMode_DISABLED // Default mode of dynamic frequency calculation. (Enums in ft_types.h)
   #define FTM_SHAPING_DEFAULT_X_FREQ   37.0f      // (Hz) Default peak frequency used by input shapers
   #define FTM_SHAPING_DEFAULT_Y_FREQ   37.0f      // (Hz) Default peak frequency used by input shapers
   #define FTM_LINEAR_ADV_DEFAULT_ENA   false      // Default linear advance enable (true) or disable (false)
-  #define FTM_LINEAR_ADV_DEFAULT_K      0         // Default linear advance gain, integer value. (Acceleration-based scaling factor.)
+  #define FTM_LINEAR_ADV_DEFAULT_K      0.0f      // Default linear advance gain
   #define FTM_SHAPING_ZETA_X            0.1f      // Zeta used by input shapers for X axis
   #define FTM_SHAPING_ZETA_Y            0.1f      // Zeta used by input shapers for Y axis
 
@@ -1153,13 +1147,18 @@
   #define FTM_FS                     1000         // (Hz) Frequency for trajectory generation. (Reciprocal of FTM_TS)
   #define FTM_TS                        0.001f    // (s) Time step for trajectory generation. (Reciprocal of FTM_FS)
 
+  // These values may be configured to adjust the duration of loop().
+  #define FTM_STEPS_PER_LOOP           60         // Number of stepper commands to generate each loop()
+  #define FTM_POINTS_PER_LOOP         100         // Number of trajectory points to generate each loop()
+
   #if DISABLED(COREXY)
     #define FTM_STEPPER_FS          20000         // (Hz) Frequency for stepper I/O update
 
     // Use this to adjust the time required to consume the command buffer.
     // Try increasing this value if stepper motion is choppy.
     #define FTM_STEPPERCMD_BUFF_SIZE 3000         // Size of the stepper command buffers
-
+                                                  // (FTM_STEPS_PER_LOOP * FTM_POINTS_PER_LOOP) is a good start
+                                                  // If you run out of memory, fall back to 3000 and increase progressively
   #else
     // CoreXY motion needs a larger buffer size. These values are based on our testing.
     #define FTM_STEPPER_FS          30000
@@ -1331,6 +1330,8 @@
 
   //#define CALIBRATION_SCRIPT_PRE  "M117 Starting Auto-Calibration\nT0\nG28\nG12\nM117 Calibrating..."
   //#define CALIBRATION_SCRIPT_POST "M500\nM117 Calibration data saved"
+
+  #define CALIBRATION_MEASUREMENT_RESOLUTION     0.01 // mm
 
   #define CALIBRATION_FEEDRATE_SLOW             60    // mm/min
   #define CALIBRATION_FEEDRATE_FAST           1200    // mm/min
@@ -1527,7 +1528,7 @@
   #endif
 
   // Include a page of printer information in the LCD Main Menu
-  //#define LCD_INFO_MENU
+  #define LCD_INFO_MENU
   #if ENABLED(LCD_INFO_MENU)
     //#define LCD_PRINTER_INFO_IS_BOOTSCREEN // Show bootscreen(s) instead of Printer Info pages
   #endif
@@ -1554,14 +1555,11 @@
   // BACK menu items keep the highlight at the top
   //#define TURBO_BACK_MENU_ITEM
 
-  // BACK menu items show "Back" instead of the previous menu name
-  //#define GENERIC_BACK_MENU_ITEM
-
   // Insert a menu for preheating at the top level to allow for quick access
-  //#define PREHEAT_SHORTCUT_MENU_ITEM
+  #define PREHEAT_SHORTCUT_MENU_ITEM
 
   // Add Configuration > Debug Menu > Endstop Test for endstop/probe/runout testing
-  //#define LCD_ENDSTOP_TEST
+  #define LCD_ENDSTOP_TEST
 
 #endif // HAS_MARLINUI_MENU
 
@@ -1586,7 +1584,7 @@
       //#define BOOT_MARLIN_LOGO_ANIMATED // Animated Marlin logo. Costs ~3260 (or ~940) bytes of flash.
     #endif
     #if ANY(HAS_MARLINUI_U8GLIB, TOUCH_UI_FTDI_EVE, HAS_MARLINUI_HD44780)
-      //#define SHOW_CUSTOM_BOOTSCREEN    // Show the bitmap in Marlin/_Bootscreen.h on startup.
+      #define SHOW_CUSTOM_BOOTSCREEN    // Show the bitmap in Marlin/_Bootscreen.h on startup.
     #endif
   #endif
 
@@ -1623,14 +1621,14 @@
    * LED Control Menu
    * Add LED Control to the LCD menu
    */
-  //#define LED_CONTROL_MENU
+  #define LED_CONTROL_MENU
   #if ENABLED(LED_CONTROL_MENU)
     #define LED_COLOR_PRESETS                 // Enable the Preset Color menu option
     //#define NEO2_COLOR_PRESETS              // Enable a second NeoPixel Preset Color menu option
     #if ENABLED(LED_COLOR_PRESETS)
       #define LED_USER_PRESET_RED        255  // User defined RED value
       #define LED_USER_PRESET_GREEN      128  // User defined GREEN value
-      #define LED_USER_PRESET_BLUE         0  // User defined BLUE value
+      #define LED_USER_PRESET_BLUE       255  // User defined BLUE value
       #define LED_USER_PRESET_WHITE      255  // User defined WHITE value
       #define LED_USER_PRESET_BRIGHTNESS 255  // User defined intensity
       //#define LED_USER_PRESET_STARTUP       // Have the printer display the user preset color on startup
@@ -2314,7 +2312,7 @@
  *
  * See https://marlinfw.org/docs/features/lin_advance.html for full instructions.
  */
-//#define LIN_ADVANCE
+#define LIN_ADVANCE
 #if ENABLED(LIN_ADVANCE)
   #if ENABLED(DISTINCT_E_FACTORS)
     #define ADVANCE_K { 0.22 }    // (mm) Compression length per 1mm/s extruder speed, per extruder
@@ -2331,7 +2329,6 @@
  *
  * Control extrusion rate based on instantaneous extruder velocity. Can be used to correct for
  * underextrusion at high extruder speeds that are otherwise well-behaved (i.e., not skipping).
- * For better results also enable ADAPTIVE_STEP_SMOOTHING.
  */
 //#define NONLINEAR_EXTRUSION
 
@@ -2559,28 +2556,27 @@
 //#define MINIMUM_STEPPER_PRE_DIR_DELAY 650
 
 /**
- * Minimum stepper driver pulse width (in ns)
- * If undefined, these defaults (from Conditionals_adv.h) apply:
- *     100 : Minimum for TMC2xxx stepper drivers
- *     500 : Minimum for LV8729
- *    1000 : Minimum for A4988 and A5984 stepper drivers
- *    2000 : Minimum for DRV8825 stepper drivers
- *    3000 : Minimum for TB6600 stepper drivers
- *   30000 : Minimum for TB6560 stepper drivers
+ * Minimum stepper driver pulse width (in µs)
+ *   0 : Smallest possible width the MCU can produce, compatible with TMC2xxx drivers
+ *   0 : Minimum 500ns for LV8729, adjusted in stepper.h
+ *   1 : Minimum for A4988 and A5984 stepper drivers
+ *   2 : Minimum for DRV8825 stepper drivers
+ *   3 : Minimum for TB6600 stepper drivers
+ *  30 : Minimum for TB6560 stepper drivers
  *
  * Override the default value based on the driver type set in Configuration.h.
  */
-//#define MINIMUM_STEPPER_PULSE_NS 2000
+//#define MINIMUM_STEPPER_PULSE 2
 
 /**
  * Maximum stepping rate (in Hz) the stepper driver allows
- * If undefined, these defaults (from Conditionals_adv.h) apply:
+ *  If undefined, defaults to 1MHz / (2 * MINIMUM_STEPPER_PULSE)
  *  5000000 : Maximum for TMC2xxx stepper drivers
  *  1000000 : Maximum for LV8729 stepper driver
- *   500000 : Maximum for A4988 stepper driver
- *   250000 : Maximum for DRV8825 stepper driver
- *   150000 : Maximum for TB6600 stepper driver
- *    15000 : Maximum for TB6560 stepper driver
+ *  500000  : Maximum for A4988 stepper driver
+ *  250000  : Maximum for DRV8825 stepper driver
+ *  150000  : Maximum for TB6600 stepper driver
+ *   15000  : Maximum for TB6560 stepper driver
  *
  * Override the default value based on the driver type set in Configuration.h.
  */
@@ -2890,7 +2886,7 @@
  *
  * Enable PARK_HEAD_ON_PAUSE to add the G-code M125 Pause and Park.
  */
-//#define ADVANCED_PAUSE_FEATURE
+#define ADVANCED_PAUSE_FEATURE
 #if ENABLED(ADVANCED_PAUSE_FEATURE)
   #define PAUSE_PARK_RETRACT_FEEDRATE         60  // (mm/s) Initial retract feedrate.
   #define PAUSE_PARK_RETRACT_LENGTH            2  // (mm) Initial retract.
@@ -2973,7 +2969,7 @@
 
   #if AXIS_IS_TMC_CONFIG(X)
     #define X_CURRENT       800        // (mA) RMS current. Multiply by 1.414 for peak current.
-    #define X_CURRENT_HOME  X_CURRENT  // (mA) RMS current for homing. (Typically lower than *_CURRENT.)
+    #define X_CURRENT_HOME  X_CURRENT  // (mA) RMS current for sensorless homing
     #define X_MICROSTEPS     16        // 0..256
     #define X_RSENSE          0.11
     #define X_CHAIN_POS      -1        // -1..0: Not chained. 1: MCU MOSI connected. 2: Next in chain, ...
@@ -3182,13 +3178,6 @@
     //#define E7_INTERPOLATE true
     //#define E7_HOLD_MULTIPLIER 0.5
   #endif
-
-  /**
-   * Use the homing current for all probing. (e.g., Current may be reduced to the
-   * point where a collision makes the motor skip instead of damaging the bed,
-   * though this is unlikely to save delicate probes from being damaged.
-   */
-  //#define PROBING_USE_CURRENT_HOME
 
   // @section tmc/spi
 
@@ -3454,7 +3443,7 @@
   /**
    * Step on both rising and falling edge signals (as with a square wave).
    */
-  #define EDGE_STEPPING
+  //#define EDGE_STEPPING
 
   /**
    * Enable M122 debugging command for TMC stepper drivers.
@@ -3536,7 +3525,7 @@
   //#define PHOTOGRAPH_PIN 23
 
   // Canon Hack Development Kit
-  // https://web.archive.org/web/20200920094805/captain-slow.dk/2014/03/09/3d-printing-timelapses/
+  // https://web.archive.org/web/20200920094805/https://captain-slow.dk/2014/03/09/3d-printing-timelapses/
   //#define CHDK_PIN        4
 
   // Optional second move with delay to trigger the camera shutter

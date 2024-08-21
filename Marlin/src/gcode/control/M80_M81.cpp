@@ -112,9 +112,9 @@ void GcodeSuite::M81() {
     return;
   }
 
-  #if ENABLED(PSU_CONTROL)
-    powerManager.power_off_soon();
-  #elif HAS_SUICIDE
+  #if HAS_SUICIDE
     suicide();
+  #elif ENABLED(PSU_CONTROL)
+    powerManager.power_off_soon();
   #endif
 }

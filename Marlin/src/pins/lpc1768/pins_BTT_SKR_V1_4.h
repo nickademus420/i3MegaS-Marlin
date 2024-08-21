@@ -129,9 +129,9 @@
 //
 // Z Probe (when not Z_MIN_PIN)
 //
-#ifndef Z_MIN_PROBE_PIN
-  #define Z_MIN_PROBE_PIN                  P0_10
-#endif
+//#ifndef Z_MIN_PROBE_PIN
+  //#define Z_MIN_PROBE_PIN                  P0_10
+//#endif
 
 //
 // Probe enable
@@ -143,8 +143,8 @@
 //
 // Filament Runout Sensor
 //
-#define FIL_RUNOUT_PIN                     P1_26  // E0DET
-#define FIL_RUNOUT2_PIN                    P1_25  // E1DET
+#define FIL_RUNOUT_PIN                     P0_10  // Changed from P1_26 E0DET to P0_10 Probe pin
+//#define FIL_RUNOUT2_PIN                    P1_25  // E1DET
 
 //
 // Power Supply Control
